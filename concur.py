@@ -14,12 +14,15 @@ from concurrent.futures import ProcessPoolExecutor,as_completed
 from geopy.distance import geodesic
 import time
 import multiprocessing
+import warnings
+warnings.filterwarnings('ignore')
 
 # 常量定义
 worker_num = 15 # 进程数可设为逻辑CPU数-1
 
 # 变量定义
-df_selected = pd.read_csv('math_model_excer1\df_selected.csv')
+# 读取pkl文件，得到df_selected
+df_selected = pd.read_pickle('math_model_excer1\df_selected.pkl')
 
 column_names = [
     'taxi_id', 'passenger', 'start_time', 'end_time', 'start_latitude',
@@ -100,6 +103,7 @@ def process_group(cur_taxi, group):
     return result_df
 # 主函数
 if __name__ == '__main__':
+    print(df_selected.info(memory_usage='deep'))
     time_start = time.time()
     # 使用spawn方式创建进程池，避免进程间共享资源的问题
     
@@ -113,7 +117,6 @@ if __name__ == '__main__':
     #     for future in as_completed(futures):
     #         trip_df = pd.concat([trip_df, future.result()], ignore_index=True)
 
-        
     time_end = time.time()
     trip_df.to_csv('trip_df.csv',index=False)
     print('time cost', time_end - time_start, 's')
