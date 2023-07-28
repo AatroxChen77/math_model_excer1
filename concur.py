@@ -13,6 +13,7 @@ import pandas as pd
 from concurrent.futures import ProcessPoolExecutor,as_completed
 from geopy.distance import geodesic
 import time
+import multiprocessing
 
 # 常量定义
 worker_num = 15 # 进程数可设为逻辑CPU数-1
@@ -100,7 +101,9 @@ def process_group(cur_taxi, group):
 # 主函数
 if __name__ == '__main__':
     time_start = time.time()
-    with ProcessPoolExecutor(max_workers=worker_num) as executor:
+    # 使用spawn方式创建进程池，避免进程间共享资源的问题
+    
+    with ProcessPoolExecutor(max_workers=worker_num,mp_context=multiprocessing.get_context('spawn')) as executor:
         results = executor.map(process_group, [cur_taxi for cur_taxi, group in groups], [group for cur_taxi, group in groups])
         for result in results:
             trip_df = pd.concat([trip_df, result], ignore_index=True)
