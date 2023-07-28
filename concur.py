@@ -15,7 +15,7 @@ from geopy.distance import geodesic
 import time
 
 # 常量定义
-worker_num = 10
+worker_num = 15 # 进程数可设为逻辑CPU数-1
 
 # 变量定义
 df_selected = pd.read_csv('math_model_excer1\df_selected.csv')
