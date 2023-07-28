@@ -10,7 +10,7 @@
 
 # 模块导入
 import pandas as pd
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor,as_completed
 from geopy.distance import geodesic
 import time
 
@@ -101,11 +101,16 @@ def process_group(cur_taxi, group):
 if __name__ == '__main__':
     time_start = time.time()
     with ProcessPoolExecutor(max_workers=worker_num) as executor:
-        for cur_taxi, group in groups:
-            trip_df = pd.concat([
-                trip_df,
-                executor.submit(process_group, cur_taxi, group).result()
-            ],ignore_index=True)
+        results = executor.map(process_group, [cur_taxi for cur_taxi, group in groups], [group for cur_taxi, group in groups])
+        for result in results:
+            trip_df = pd.concat([trip_df, result], ignore_index=True)
+
+    # with ProcessPoolExecutor(max_workers=worker_num) as executor:
+    #     futures = [executor.submit(process_group, cur_taxi, group) for cur_taxi, group in groups]
+    #     for future in as_completed(futures):
+    #         trip_df = pd.concat([trip_df, future.result()], ignore_index=True)
+
+        
     time_end = time.time()
     trip_df.to_csv('trip_df.csv',index=False)
     print('time cost', time_end - time_start, 's')
