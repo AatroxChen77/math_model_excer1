@@ -10,19 +10,20 @@
 
 # 模块导入
 import pandas as pd
-from concurrent.futures import ProcessPoolExecutor,as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from geopy.distance import geodesic
 import time
 import multiprocessing
 import warnings
+
 warnings.filterwarnings('ignore')
 
 # 常量定义
-worker_num = 15 # 进程数可设为逻辑CPU数-1
+worker_num = 15  # 进程数可设为逻辑CPU数-1
 
 # 变量定义
 # 读取pkl文件，得到df_selected
-df_selected = pd.read_pickle('math_model_excer1\df_selected.pkl')
+df_selected = pd.read_pickle('GPS_data\\df_selected.pkl')
 
 column_names = [
     'taxi_id', 'passenger', 'start_time', 'end_time', 'start_latitude',
@@ -101,14 +102,20 @@ def process_group(cur_taxi, group):
         last_row = cur_row
 
     return result_df
+
+
 # 主函数
 if __name__ == '__main__':
     print(df_selected.info(memory_usage='deep'))
     time_start = time.time()
     # 使用spawn方式创建进程池，避免进程间共享资源的问题
-    
-    with ProcessPoolExecutor(max_workers=worker_num,mp_context=multiprocessing.get_context('spawn')) as executor:
-        results = executor.map(process_group, [cur_taxi for cur_taxi, group in groups], [group for cur_taxi, group in groups])
+
+    with ProcessPoolExecutor(
+            max_workers=worker_num,
+            mp_context=multiprocessing.get_context('spawn')) as executor:
+        results = executor.map(process_group,
+                               [cur_taxi for cur_taxi, group in groups],
+                               [group for cur_taxi, group in groups])
         for result in results:
             trip_df = pd.concat([trip_df, result], ignore_index=True)
 
@@ -118,5 +125,5 @@ if __name__ == '__main__':
     #         trip_df = pd.concat([trip_df, future.result()], ignore_index=True)
 
     time_end = time.time()
-    trip_df.to_csv('trip_df.csv',index=False)
+    trip_df.to_pickle('GPS_data\\trip_df.pkl')
     print('time cost', time_end - time_start, 's')
