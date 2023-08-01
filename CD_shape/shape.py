@@ -67,6 +67,9 @@ if __name__ == '__main__':
             if area_id!=-1:
                 area[area_id]+=1
 
+    # 保存area
+    pd.to_pickle(area, 'CD_shape/area.pkl')
+
     # 将area画出柱状图
     plt.bar(range(area_num), area)
     plt.xticks(range(area_num), [records[i][1] for i in range(area_num)], rotation=90)
