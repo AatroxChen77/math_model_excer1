@@ -15,11 +15,13 @@ from geopy.distance import geodesic
 import time
 import multiprocessing
 import warnings
+from math import radians, sin, cos, asin, sqrt
+
 
 warnings.filterwarnings('ignore')
 
 # 常量定义
-worker_num = 15  # 进程数可设为逻辑CPU数-1
+worker_num = 8  # 进程数可设为逻辑CPU数-1
 
 # 变量定义
 # 读取pkl文件，得到df_selected
@@ -40,15 +42,25 @@ groups = [(cur_taxi, group)
 
 # 函数定义
 # 定义一个函数，用来计算两个经纬度之间的距离
-def get_distance(point1, point2):
-    """
-    计算两个经纬度之间的距离
-    :param point1: 起点经纬度 (纬度, 经度)
-    :param point2: 终点经纬度 (纬度, 经度)
-    :return: 距离（km）
-    """
-    return geodesic(point1, point2).km
+# def get_distance(point1, point2):
+#     """
+#     计算两个经纬度之间的距离
+#     :param point1: 起点经纬度 (纬度, 经度)
+#     :param point2: 终点经纬度 (纬度, 经度)
+#     :return: 距离（km）
+#     """
+#     return geodesic(point1, point2).km
 
+def get_distance(lat1,lon1,lat2,lon2,):
+    # 将十进制转为弧度
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    # haversine公式
+    d_lon = lon2 - lon1
+    d_lat = lat2 - lat1
+    aa = sin(d_lat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(d_lon / 2) ** 2
+    c = 2 * asin(sqrt(aa))
+    r = 6371  # 地球半径，千米
+    return c * r
 
 def process_group(cur_taxi, group):
     """
@@ -76,8 +88,8 @@ def process_group(cur_taxi, group):
         if cur_passenger != cur_row['passenger']:
             # 如果载客情况发生了变化则表示本段轨迹记录完成，记录其终止时间、终止地点
             cur_distance += get_distance(
-                (cur_row['latitude'], cur_row['longitude']),
-                (last_row['latitude'], last_row['longitude']))
+                cur_row['latitude'], cur_row['longitude'],
+                last_row['latitude'], last_row['longitude'])
             end_time = last_row['time_s']
             end_latitude = last_row['latitude']
             end_longitude = last_row['longitude']
@@ -97,8 +109,8 @@ def process_group(cur_taxi, group):
             cur_distance = 0
         else:  # 如果载客情况没有发生变化，则添加轨迹长度，继续记录轨迹
             cur_distance += get_distance(
-                (cur_row['latitude'], cur_row['longitude']),
-                (last_row['latitude'], last_row['longitude']))
+                cur_row['latitude'], cur_row['longitude'],
+                last_row['latitude'], last_row['longitude'])
         last_row = cur_row
 
     return result_df
@@ -108,21 +120,21 @@ def process_group(cur_taxi, group):
 if __name__ == '__main__':
     print(df_selected.info(memory_usage='deep'))
     time_start = time.time()
+    
     # 使用spawn方式创建进程池，避免进程间共享资源的问题
+    # with ProcessPoolExecutor(
+    #         max_workers=worker_num,
+    #         mp_context=multiprocessing.get_context('spawn')) as executor:
+    #     results = executor.map(process_group,
+    #                            [cur_taxi for cur_taxi, group in groups],
+    #                            [group for cur_taxi, group in groups])
+    #     for result in results:
+    #         trip_df = pd.concat([trip_df, result], ignore_index=True)
 
-    with ProcessPoolExecutor(
-            max_workers=worker_num,
-            mp_context=multiprocessing.get_context('spawn')) as executor:
-        results = executor.map(process_group,
-                               [cur_taxi for cur_taxi, group in groups],
-                               [group for cur_taxi, group in groups])
-        for result in results:
-            trip_df = pd.concat([trip_df, result], ignore_index=True)
-
-    # with ProcessPoolExecutor(max_workers=worker_num) as executor:
-    #     futures = [executor.submit(process_group, cur_taxi, group) for cur_taxi, group in groups]
-    #     for future in as_completed(futures):
-    #         trip_df = pd.concat([trip_df, future.result()], ignore_index=True)
+    with ProcessPoolExecutor(max_workers=worker_num) as executor:
+        futures = [executor.submit(process_group, cur_taxi, group) for cur_taxi, group in groups]
+        for future in as_completed(futures):
+            trip_df = pd.concat([trip_df, future.result()], ignore_index=True)
 
     time_end = time.time()
     trip_df.to_pickle('GPS_data\\trip_df.pkl')

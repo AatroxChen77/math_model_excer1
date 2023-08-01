@@ -77,4 +77,5 @@ if __name__ == '__main__':
     plt.ylabel('出行次数')
     plt.title('成都市各区县出行次数')
     plt.show()
+    plt.savefig('CD_shape/area.png', dpi=300,bbox_inches='tight') # 保存图片
 
